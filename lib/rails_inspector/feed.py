@@ -41,6 +41,7 @@ SCAN_BYTES = 5 * 1024 * 1024
 CHUNK = 4 * 1024 * 1024
 MAX_EVENTS = 2000
 NOTIFY_EVERY = 5
+JS_RETRY = 5
 
 out_lock = threading.Lock()
 events = queue.Queue()
@@ -180,6 +181,7 @@ class Inspector:
         self.message = None
         self.js = {"port": self.cfg["jsPort"], "listening": False, "error": ""}
         self.server = None
+        self.js_failed_at = None
         self.last_note = 0
         self.load_projects()
 
@@ -386,12 +388,20 @@ class Inspector:
             server = make_server(port, lambda report: put(("js", report)), lambda: self.cfg["jsOrigins"])
         except OSError as e:
             self.js = {"port": port, "listening": False, "error": "Port %d: %s" % (port, e.strerror or e)}
+            self.js_failed_at = time.time()
             put(("emit",))
             return
         self.server = server
         self.js = {"port": port, "listening": True, "error": ""}
         put(("emit",))
         server.serve_forever()
+
+    def retry_js(self, now):
+        """A port that was taken, by a feed that is still on its way out or by another program, is tried again."""
+        if self.js_failed_at is None or now - self.js_failed_at < JS_RETRY:
+            return
+        self.js_failed_at = None
+        threading.Thread(target=self.start_js, daemon=True).start()
 
     def restart_js(self):
         server, self.server = self.server, None
@@ -453,6 +463,7 @@ class Inspector:
                     return
                 changed = self.handle(ev) or changed
             changed = self.reload_config() or changed
+            self.retry_js(time.time())
             for p in self.projects:
                 while p.poll():
                     pass

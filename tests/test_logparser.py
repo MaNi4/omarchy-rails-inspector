@@ -149,6 +149,37 @@ class NormalizeTest(unittest.TestCase):
 
 
 
+class RaisedProblemsTest(unittest.TestCase):
+    """What a Rails 8 application in its default configuration writes, taken from a real log."""
+
+    def test_strict_loading_that_raises_is_an_error_with_its_line(self):
+        store = parse("""Started GET "/strict" for 127.0.0.1 at 2026-10-15 11:28:01 +0200
+Processing by ProblemsController#strict as */*
+  Order Load (0.4ms)  SELECT "orders".* FROM "orders" ORDER BY "orders"."id" ASC LIMIT 1 /*action='strict',application='ShopLocal',controller='problems'*/
+  \u21b3 app/controllers/problems_controller.rb:17:in 'ProblemsController#strict'
+Completed 500 Internal Server Error in 10ms (ActiveRecord: 0.4ms (1 query, 0 cached) | GC: 0.0ms)
+
+
+  
+ActiveRecord::StrictLoadingViolationError (`Order` is marked for strict_loading. The Customer association named `:customer` cannot be lazily loaded.):
+  
+app/controllers/problems_controller.rb:17:in 'ProblemsController#strict'
+Started GET "/old" for 127.0.0.1 at 2026-10-15 11:28:01 +0200
+""")
+        [error] = by_kind(store, "error")
+        self.assertTrue(error["title"].startswith("ActiveRecord::StrictLoadingViolationError: `Order` is marked"))
+        self.assertEqual(error["where"], "app/controllers/problems_controller.rb:17")
+        self.assertEqual(by_kind(store, "n1"), [])
+
+    def test_a_deprecation_called_from_inside_a_gem_has_no_location(self):
+        store = parse("DEPRECATION WARNING: Order#legacy_total is deprecated (called from "
+                      "ActionController::BasicImplicitRender#send_action at /home/u/.gem/ruby/3.4.0/gems/"
+                      "actionpack-8.0.5.1/lib/action_controller/metal/basic_implicit_render.rb:8)\n")
+        [p] = by_kind(store, "deprecation")
+        self.assertEqual(p["where"], "")
+        self.assertIn("basic_implicit_render.rb:8", store.detail(p["fp"]))
+
+
 class LogFormatTest(unittest.TestCase):
     def notice(self, text):
         store = ProblemStore(helper.project_dir())

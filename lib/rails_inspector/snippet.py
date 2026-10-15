@@ -8,6 +8,17 @@ SNIPPET = r"""(function () {
     if (x && typeof x === "object") { try { return JSON.stringify(x); } catch (_) { } }
     return String(x);
   }
+  function format(args) {
+    if (typeof args[0] !== "string" || args[0].indexOf("%%") < 0) return args.map(text).join(" ");
+    var rest = args.slice(1);
+    var first = args[0].replace(/%%[sdifoOc%%]/g, function (m) {
+      if (m === "%%%%") return "%%";
+      if (!rest.length) return m;
+      var value = rest.shift();
+      return m === "%%c" ? "" : text(value);
+    });
+    return [first].concat(rest.map(text)).join(" ");
+  }
   function short(url) {
     try { var u = new URL(url, location.href); return u.origin === location.origin ? u.pathname + u.search : u.href; } catch (_) { return String(url); }
   }
@@ -58,7 +69,7 @@ SNIPPET = r"""(function () {
       try {
         var args = [].slice.call(arguments), err = args.filter(function (a) { return a instanceof Error; })[0];
         var at = caller();
-        send(k[1], k[2], args.map(text).join(" "), at[0], at[1], at[2], err && err.stack);
+        send(k[1], k[2], format(args), at[0], at[1], at[2], err && err.stack);
       } catch (_) { }
       return original.apply(console, arguments);
     };
@@ -67,7 +78,7 @@ SNIPPET = r"""(function () {
   console.assert = function (ok) {
     if (!ok) try {
       var at = caller();
-      send("assert", "error", "Assertion failed: " + [].slice.call(arguments, 1).map(text).join(" "), at[0], at[1], at[2]);
+      send("assert", "error", "Assertion failed: " + format([].slice.call(arguments, 1)), at[0], at[1], at[2]);
     } catch (_) { }
     return originalAssert.apply(console, arguments);
   };

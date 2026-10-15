@@ -13,6 +13,7 @@ SQL = re.compile(r"^\s{2,}(CACHE )?(.*?)\s*\((\d+(?:\.\d+)?)ms\)\s+(\S.*)$")
 SOURCE = re.compile(r"^\s+↳ (.+?)(?::in .*)?$")
 STRICT = re.compile(r"is marked for strict.loading", re.I)
 DEPRECATION = re.compile(r"^DEPRECATION WARNING: (.*)$")
+GEM_PATH = re.compile(r"/gems/[^/]+-\d[^/]*/")
 CALLED_FROM = re.compile(r"\s*\(called from (.+?) at (.+?:\d+)\)\.?\s*$")
 EXCEPTION = re.compile(r"^((?:[A-Z]\w*::)+[A-Z]\w*|[A-Z]\w*(?:Error|Exception|Invalid|NotFound|Missing)) \((.*)$")
 BACKTRACE = re.compile(r"^\S+:\d+(?::in .*)?$")
@@ -48,7 +49,12 @@ def app_frame(lines):
     for line in lines:
         if line.startswith(("app/", "lib/", "config/")):
             return re.sub(r":in .*$", "", line)
-    return re.sub(r":in .*$", "", lines[0]) if lines else ""
+    return in_app(re.sub(r":in .*$", "", lines[0])) if lines else ""
+
+
+def in_app(location):
+    """A location in the application, or "" for one inside a gem, which is no place to open."""
+    return "" if GEM_PATH.search(location) else location
 
 
 def numbers_out(text):
@@ -203,14 +209,14 @@ class LogParser:
             self.recognized += 1
             ctx.pending = {"type": "query", "q": q, "src": "", "req": ctx.req}
             return
-        if STRICT.search(line):
-            ctx.pending = {"type": "strict", "msg": line.strip(), "src": "", "req": ctx.req}
-            return
         m = DEPRECATION.match(line)
         if m:
             self.deprecation(m.group(1), ctx.req)
             return
         m = EXCEPTION.match(line)
+        if not m and STRICT.search(line):
+            ctx.pending = {"type": "strict", "msg": line.strip(), "src": "", "req": ctx.req}
+            return
         if m:
             rest = m.group(2)
             done = rest.endswith("):")
@@ -303,7 +309,7 @@ class LogParser:
 
     def deprecation(self, text, req):
         m = CALLED_FROM.search(text)
-        where = m.group(2) if m else ""
+        where = in_app(m.group(2)) if m else ""
         msg = CALLED_FROM.sub("", text) if m else text
         self.record("deprecation", [msg[:300]], msg.split(". ")[0][:200], req.context() if req else "", where, text)
 

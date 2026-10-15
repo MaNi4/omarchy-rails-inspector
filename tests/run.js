@@ -15,10 +15,10 @@ const Model = new Function(source + `\nreturn { KINDS, ALARMING, KEPT_DETAILS, T
 const REPORT = "http://127.0.0.1:9787/report"
 const REPORTER = "http://127.0.0.1:9787/rails-inspector.js?project=shop"
 const BUNDLE = "http://localhost:3000/assets/application.debug.js"
-const reporterSource = fs.readFileSync(path.join(root, "lib", "rails_inspector", "snippet.py"), "utf8")
-  .match(/SNIPPET = r"""([\s\S]*?)"""/)[1]
-  .replace("%(project)s", JSON.stringify("shop"))
-  .replace("%(url)s", JSON.stringify(REPORT))
+const reporterSource = require("child_process").execFileSync("python3", ["-B", "-c",
+  "import json, sys; sys.path.insert(0, sys.argv[1]); from rails_inspector.snippet import SNIPPET; "
+  + "print(SNIPPET % {'project': json.dumps('shop'), 'url': json.dumps(sys.argv[2])})",
+  path.join(root, "lib"), REPORT], { encoding: "utf8" })
 
 const shop = (fresh, counts, extra) => Object.assign({ name: "shop", path: "/p/shop", seen: 100, fresh: fresh || {}, counts: counts || {},
   problems: [] }, extra)
@@ -325,6 +325,16 @@ const reporter = {
     assert.deepStrictEqual(reports.map(r => [r.type, r.level, r.message]),
       [["warning", "warning", "careful"], ["assert", "error", "Assertion failed: math"]])
     assert.strictEqual(b.consoleCalls.filter(c => c[0] === "assert").length, 2)
+  },
+  async "console format strings are filled in, as Stimulus reports a controller that failed"() {
+    const b = browser()
+    b.page('console.error("%s\\n\\n%o\\n\\n%o", "Error connecting controller", new TypeError("x is undefined"), { identifier: "cart" })')
+    b.page('console.warn("%cstyled%c %d%% done", "color: red", "", 50, "extra")')
+    const [stimulus, styled] = await b.reports()
+    assert.strictEqual(stimulus.message.split("\n")[0], "Error connecting controller")
+    assert.match(stimulus.message, /TypeError: x is undefined/)
+    assert.match(stimulus.stack, /TypeError: x is undefined/)
+    assert.strictEqual(styled.message, "styled 50% done extra")
   },
   async "a value that cannot be turned into JSON is still reported"() {
     const b = browser()

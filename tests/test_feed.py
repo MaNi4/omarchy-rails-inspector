@@ -211,6 +211,29 @@ class FeedBehaviourTest(FeedCase):
         self.assertFalse(self.inspector.js["listening"])
         self.assertIn("Port %d" % busy.getsockname()[1], self.inspector.js["error"])
 
+    def test_a_taken_port_is_tried_again_until_it_is_free(self):
+        import socket
+        busy = socket.socket()
+        busy.bind(("127.0.0.1", 0))
+        busy.listen()
+        port = busy.getsockname()[1]
+        self.inspector.cfg["jsPort"] = port
+        self.inspector.start_js()
+        failed_at = self.inspector.js_failed_at
+        with mock.patch.object(feed.threading, "Thread") as thread:
+            self.inspector.retry_js(failed_at + feed.JS_RETRY - 1)
+            thread.assert_not_called()
+        busy.close()
+        self.inspector.retry_js(failed_at + feed.JS_RETRY)
+        for _ in range(50):
+            if self.inspector.js["listening"]:
+                break
+            time.sleep(0.05)
+        self.addCleanup(lambda: self.inspector.server and (self.inspector.server.shutdown(), self.inspector.server.server_close()))
+        self.assertTrue(self.inspector.js["listening"])
+        self.assertEqual(self.inspector.js["port"], port)
+        self.assertIsNone(self.inspector.js_failed_at)
+
     def test_notifications_can_be_turned_off_and_do_not_pile_up(self):
         with mock.patch.object(feed.shutil, "which", return_value="/usr/bin/notify-send"), \
                 mock.patch.object(feed.subprocess, "Popen") as popen:
