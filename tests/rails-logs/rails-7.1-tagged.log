@@ -1,0 +1,101 @@
+# Logfile created on 2026-10-15 08:38:45 +0000 by logger.rb/v1.7.0
+  [1m[35m (0.1ms)[0m  [1m[35mCREATE TABLE "customers" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "name" varchar)[0m
+  ↳ app.rb:45:in `block in <main>'
+  [1m[35m (0.1ms)[0m  [1m[35mCREATE TABLE "orders" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "customer_id" integer, "total" integer)[0m
+  ↳ app.rb:46:in `block in <main>'
+  [1m[35m (0.1ms)[0m  [1m[35mCREATE TABLE "schema_migrations" ("version" varchar NOT NULL PRIMARY KEY)[0m
+  ↳ app.rb:44:in `<main>'
+  [1m[35m (0.1ms)[0m  [1m[35mCREATE TABLE "ar_internal_metadata" ("key" varchar NOT NULL PRIMARY KEY, "value" varchar, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL)[0m
+  ↳ app.rb:44:in `<main>'
+  [1m[36mActiveRecord::InternalMetadata Load (0.3ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = ? ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1[0m  [[nil, "environment"]]
+  ↳ app.rb:44:in `<main>'
+  [1m[36mActiveRecord::InternalMetadata Create (0.5ms)[0m  [1m[32mINSERT INTO "ar_internal_metadata" ("key", "value", "created_at", "updated_at") VALUES ('environment', 'development', '2026-10-15 08:38:46.374961', '2026-10-15 08:38:46.374995') RETURNING "key"[0m
+  ↳ app.rb:44:in `<main>'
+[cf8f7667-25ac-4994-a34c-7ccd808f97fb] Started GET "/orders" for 127.0.0.1 at 2026-10-15 08:38:47 +0000
+[cf8f7667-25ac-4994-a34c-7ccd808f97fb] Processing by OrdersController#index as HTML
+[cf8f7667-25ac-4994-a34c-7ccd808f97fb]   [1m[36mOrder Load (0.6ms)[0m  [1m[34mSELECT "orders".* FROM "orders"[0m
+[cf8f7667-25ac-4994-a34c-7ccd808f97fb]   ↳ app.rb:78:in `map'
+[cf8f7667-25ac-4994-a34c-7ccd808f97fb]   [1m[36mCustomer Load (0.2ms)[0m  [1m[34mSELECT "customers".* FROM "customers" WHERE "customers"."id" = ? LIMIT ?[0m  [["id", 1], ["LIMIT", 1]]
+[cf8f7667-25ac-4994-a34c-7ccd808f97fb]   ↳ app.rb:78:in `block in index'
+[cf8f7667-25ac-4994-a34c-7ccd808f97fb]   [1m[36mCustomer Load (0.3ms)[0m  [1m[34mSELECT "customers".* FROM "customers" WHERE "customers"."id" = ? LIMIT ?[0m  [["id", 2], ["LIMIT", 1]]
+[cf8f7667-25ac-4994-a34c-7ccd808f97fb]   ↳ app.rb:78:in `block in index'
+[cf8f7667-25ac-4994-a34c-7ccd808f97fb]   [1m[36mCustomer Load (0.1ms)[0m  [1m[34mSELECT "customers".* FROM "customers" WHERE "customers"."id" = ? LIMIT ?[0m  [["id", 3], ["LIMIT", 1]]
+[cf8f7667-25ac-4994-a34c-7ccd808f97fb]   ↳ app.rb:78:in `block in index'
+[cf8f7667-25ac-4994-a34c-7ccd808f97fb]   [1m[36mCustomer Load (0.5ms)[0m  [1m[34mSELECT "customers".* FROM "customers" WHERE "customers"."id" = ? LIMIT ?[0m  [["id", 4], ["LIMIT", 1]]
+[cf8f7667-25ac-4994-a34c-7ccd808f97fb]   ↳ app.rb:78:in `block in index'
+[cf8f7667-25ac-4994-a34c-7ccd808f97fb]   [1m[36mCustomer Load (0.1ms)[0m  [1m[34mSELECT "customers".* FROM "customers" WHERE "customers"."id" = ? LIMIT ?[0m  [["id", 5], ["LIMIT", 1]]
+[cf8f7667-25ac-4994-a34c-7ccd808f97fb]   ↳ app.rb:78:in `block in index'
+[cf8f7667-25ac-4994-a34c-7ccd808f97fb]   Rendering text template
+[cf8f7667-25ac-4994-a34c-7ccd808f97fb]   Rendered text template (Duration: 0.0ms | Allocations: 4)
+[cf8f7667-25ac-4994-a34c-7ccd808f97fb] Completed 200 OK in 59ms (Views: 16.3ms | ActiveRecord: 1.7ms | Allocations: 5387)
+
+
+[69ff3c40-59d1-41b8-83e0-d9005771644d] Started GET "/slow" for 127.0.0.1 at 2026-10-15 08:38:47 +0000
+[69ff3c40-59d1-41b8-83e0-d9005771644d] Processing by OrdersController#slow as HTML
+[69ff3c40-59d1-41b8-83e0-d9005771644d]   [1m[36mOrder Load (5355.8ms)[0m  [1m[35mWITH RECURSIVE r(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM r WHERE n < 3000000) SELECT count(*) AS n FROM r[0m
+[69ff3c40-59d1-41b8-83e0-d9005771644d]   ↳ app.rb:83:in `slow'
+[69ff3c40-59d1-41b8-83e0-d9005771644d]   Rendering text template
+[69ff3c40-59d1-41b8-83e0-d9005771644d]   Rendered text template (Duration: 0.0ms | Allocations: 1)
+[69ff3c40-59d1-41b8-83e0-d9005771644d] Completed 200 OK in 6459ms (Views: 1.8ms | ActiveRecord: 5355.8ms | Allocations: 392)
+
+
+[230307d5-7ece-4fac-ac76-e50100054e32] Started GET "/boom" for 127.0.0.1 at 2026-10-15 08:38:53 +0000
+[230307d5-7ece-4fac-ac76-e50100054e32] Processing by OrdersController#boom as HTML
+[230307d5-7ece-4fac-ac76-e50100054e32]   [1m[36mOrder Load (0.9ms)[0m  [1m[34mSELECT "orders".* FROM "orders" WHERE "orders"."id" = ? LIMIT ?[0m  [["id", 1], ["LIMIT", 1]]
+[230307d5-7ece-4fac-ac76-e50100054e32]   ↳ app.rb:89:in `boom'
+[230307d5-7ece-4fac-ac76-e50100054e32] Completed 500 Internal Server Error in 19ms (ActiveRecord: 0.7ms | Allocations: 637)
+
+
+[230307d5-7ece-4fac-ac76-e50100054e32]   
+[230307d5-7ece-4fac-ac76-e50100054e32] NoMethodError (undefined method `missing_method_here' for an instance of Order):
+[230307d5-7ece-4fac-ac76-e50100054e32]   
+[230307d5-7ece-4fac-ac76-e50100054e32] app.rb:89:in `boom'
+[230307d5-7ece-4fac-ac76-e50100054e32] app.rb:116:in `<main>'
+[6e4027db-7fae-42fe-8616-1b1ae23656f1] Started GET "/template" for 127.0.0.1 at 2026-10-15 08:38:55 +0000
+[6e4027db-7fae-42fe-8616-1b1ae23656f1] Processing by OrdersController#template as HTML
+[6e4027db-7fae-42fe-8616-1b1ae23656f1]   Rendering inline template
+[6e4027db-7fae-42fe-8616-1b1ae23656f1]   Rendered inline template (Duration: 6.3ms | Allocations: 218)
+[6e4027db-7fae-42fe-8616-1b1ae23656f1] Completed 500 Internal Server Error in 10ms (ActiveRecord: 0.0ms | Allocations: 435)
+
+
+[6e4027db-7fae-42fe-8616-1b1ae23656f1]   
+[6e4027db-7fae-42fe-8616-1b1ae23656f1] ActionView::Template::Error (undefined method `name' for nil):
+[6e4027db-7fae-42fe-8616-1b1ae23656f1]     1: <%= @nothing.name %>
+[6e4027db-7fae-42fe-8616-1b1ae23656f1]   
+[6e4027db-7fae-42fe-8616-1b1ae23656f1] app.rb:93:in `template'
+[6e4027db-7fae-42fe-8616-1b1ae23656f1] app.rb:117:in `<main>'
+[64592b2f-72ea-4229-8f3c-b9d996f0222e] Started GET "/strict" for 127.0.0.1 at 2026-10-15 08:38:56 +0000
+[64592b2f-72ea-4229-8f3c-b9d996f0222e] Processing by OrdersController#strict as HTML
+[64592b2f-72ea-4229-8f3c-b9d996f0222e]   [1m[36mOrder Load (0.1ms)[0m  [1m[34mSELECT "orders".* FROM "orders" ORDER BY "orders"."id" ASC LIMIT ?[0m  [["LIMIT", 1]]
+[64592b2f-72ea-4229-8f3c-b9d996f0222e]   ↳ app.rb:97:in `strict'
+[64592b2f-72ea-4229-8f3c-b9d996f0222e] [31m`Order` is marked for strict_loading. The Customer association named `:customer` cannot be lazily loaded.[0m
+[64592b2f-72ea-4229-8f3c-b9d996f0222e]   ↳ app.rb:98:in `strict'
+[64592b2f-72ea-4229-8f3c-b9d996f0222e]   [1m[36mCustomer Load (0.1ms)[0m  [1m[34mSELECT "customers".* FROM "customers" WHERE "customers"."id" = ? LIMIT ?[0m  [["id", 1], ["LIMIT", 1]]
+[64592b2f-72ea-4229-8f3c-b9d996f0222e]   ↳ app.rb:98:in `strict'
+[64592b2f-72ea-4229-8f3c-b9d996f0222e]   Rendering text template
+[64592b2f-72ea-4229-8f3c-b9d996f0222e]   Rendered text template (Duration: 0.0ms | Allocations: 1)
+[64592b2f-72ea-4229-8f3c-b9d996f0222e] Completed 200 OK in 5ms (Views: 0.2ms | ActiveRecord: 0.2ms | Allocations: 1414)
+
+
+[7219f82f-e113-4b6f-a7a3-76cdb054d24f] Started GET "/old" for 127.0.0.1 at 2026-10-15 08:38:56 +0000
+[7219f82f-e113-4b6f-a7a3-76cdb054d24f] Processing by OrdersController#old as HTML
+[7219f82f-e113-4b6f-a7a3-76cdb054d24f] DEPRECATION WARNING: old_thing is deprecated, use new_thing (called from <main> at app.rb:119)
+[7219f82f-e113-4b6f-a7a3-76cdb054d24f]   Rendering text template
+[7219f82f-e113-4b6f-a7a3-76cdb054d24f]   Rendered text template (Duration: 0.0ms | Allocations: 1)
+[7219f82f-e113-4b6f-a7a3-76cdb054d24f] Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms | Allocations: 197)
+
+
+[b33b56f5-1e30-470b-90d3-d7481825a9aa] Started POST "/orders" for 127.0.0.1 at 2026-10-15 08:38:56 +0000
+[b33b56f5-1e30-470b-90d3-d7481825a9aa] Processing by OrdersController#create as HTML
+[b33b56f5-1e30-470b-90d3-d7481825a9aa]   Parameters: {"order"=>{"total"=>"1", "admin"=>"true"}}
+[b33b56f5-1e30-470b-90d3-d7481825a9aa] [31mUnpermitted parameter: :admin. Context: { controller: OrdersController, action: create, request: #<ActionDispatch::Request:0x00007ea11f717778>, params: {"order"=>{"total"=>"1", "admin"=>"true"}, "controller"=>"orders", "action"=>"create"} }[0m
+[b33b56f5-1e30-470b-90d3-d7481825a9aa]   Rendering text template
+[b33b56f5-1e30-470b-90d3-d7481825a9aa]   Rendered text template (Duration: 0.0ms | Allocations: 1)
+[b33b56f5-1e30-470b-90d3-d7481825a9aa] Completed 200 OK in 1ms (Views: 0.3ms | ActiveRecord: 0.0ms | Allocations: 263)
+
+
+[aa248632-16f1-49c1-8696-cd15ea53788e] Started GET "/missing" for 127.0.0.1 at 2026-10-15 08:38:56 +0000
+[aa248632-16f1-49c1-8696-cd15ea53788e]   
+[aa248632-16f1-49c1-8696-cd15ea53788e] ActionController::RoutingError (No route matches [GET] "/missing"):
+[aa248632-16f1-49c1-8696-cd15ea53788e]   
+[aa248632-16f1-49c1-8696-cd15ea53788e] app.rb:121:in `<main>'

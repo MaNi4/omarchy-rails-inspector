@@ -1,0 +1,14 @@
+#!/bin/sh
+# Writes rails-<version>.log and rails-<version>-tagged.log here: the development
+# log of app.rb run under each Rails version in Docker. Add a version to the
+# list to test it; test_rails_logs.py reads every log here.
+cd -- "$(dirname -- "$0")" || exit 1
+for v in ${*:-7.0 7.1 7.2 8.0 8.1}; do
+  for tagged in "" 1; do
+    name="rails-$v${tagged:+-tagged}"
+    docker run --rm -e RAILS="$v" -e TAGGED="$tagged" -v "$PWD/app.rb:/src/app.rb:ro" \
+      -v rails-inspector-gems:/usr/local/bundle ruby:3.3 \
+      sh -c 'mkdir -p /app && cp /src/app.rb /app/app.rb && cd /app && ruby app.rb >&2 && cat log/development.log' \
+      > "$name.log" && echo "$name ok" || { echo "$name failed" >&2; rm -f "$name.log"; }
+  done
+done

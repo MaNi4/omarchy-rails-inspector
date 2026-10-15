@@ -1,0 +1,101 @@
+# Logfile created on 2026-10-15 08:38:03 +0000 by logger.rb/v1.7.0
+  [1m[35m (1.5ms)[0m  [1m[35mCREATE TABLE "customers" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "name" varchar)[0m
+  ↳ app.rb:45:in `block in <main>'
+  [1m[35m (4.2ms)[0m  [1m[35mCREATE TABLE "orders" ("id" integer PRIMARY KEY AUTOINCREMENT NOT NULL, "customer_id" integer, "total" integer)[0m
+  ↳ app.rb:46:in `block in <main>'
+  [1m[35m (0.8ms)[0m  [1m[35mCREATE TABLE "schema_migrations" ("version" varchar NOT NULL PRIMARY KEY)[0m
+  ↳ app.rb:44:in `<main>'
+  [1m[35m (0.7ms)[0m  [1m[35mCREATE TABLE "ar_internal_metadata" ("key" varchar NOT NULL PRIMARY KEY, "value" varchar, "created_at" datetime(6) NOT NULL, "updated_at" datetime(6) NOT NULL)[0m
+  ↳ app.rb:44:in `<main>'
+  [1m[36mActiveRecord::InternalMetadata Load (0.8ms)[0m  [1m[34mSELECT * FROM "ar_internal_metadata" WHERE "ar_internal_metadata"."key" = ? ORDER BY "ar_internal_metadata"."key" ASC LIMIT 1[0m  [[nil, "environment"]]
+  ↳ app.rb:44:in `<main>'
+  [1m[36mActiveRecord::InternalMetadata Create (0.9ms)[0m  [1m[32mINSERT INTO "ar_internal_metadata" ("key", "value", "created_at", "updated_at") VALUES ('environment', 'development', '2026-10-15 08:38:07.939218', '2026-10-15 08:38:07.939254') RETURNING "key"[0m
+  ↳ app.rb:44:in `<main>'
+Started GET "/orders" for 127.0.0.1 at 2026-10-15 08:38:08 +0000
+Processing by OrdersController#index as HTML
+  [1m[36mOrder Load (0.1ms)[0m  [1m[34mSELECT "orders".* FROM "orders"[0m
+  ↳ app.rb:78:in `map'
+  [1m[36mCustomer Load (0.4ms)[0m  [1m[34mSELECT "customers".* FROM "customers" WHERE "customers"."id" = ? LIMIT ?[0m  [["id", 1], ["LIMIT", 1]]
+  ↳ app.rb:78:in `block in index'
+  [1m[36mCustomer Load (0.4ms)[0m  [1m[34mSELECT "customers".* FROM "customers" WHERE "customers"."id" = ? LIMIT ?[0m  [["id", 2], ["LIMIT", 1]]
+  ↳ app.rb:78:in `block in index'
+  [1m[36mCustomer Load (0.4ms)[0m  [1m[34mSELECT "customers".* FROM "customers" WHERE "customers"."id" = ? LIMIT ?[0m  [["id", 3], ["LIMIT", 1]]
+  ↳ app.rb:78:in `block in index'
+  [1m[36mCustomer Load (0.4ms)[0m  [1m[34mSELECT "customers".* FROM "customers" WHERE "customers"."id" = ? LIMIT ?[0m  [["id", 4], ["LIMIT", 1]]
+  ↳ app.rb:78:in `block in index'
+  [1m[36mCustomer Load (0.1ms)[0m  [1m[34mSELECT "customers".* FROM "customers" WHERE "customers"."id" = ? LIMIT ?[0m  [["id", 5], ["LIMIT", 1]]
+  ↳ app.rb:78:in `block in index'
+  Rendering text template
+  Rendered text template (Duration: 0.1ms | Allocations: 4)
+Completed 200 OK in 61ms (Views: 23.8ms | ActiveRecord: 1.7ms | Allocations: 5373)
+
+
+Started GET "/slow" for 127.0.0.1 at 2026-10-15 08:38:09 +0000
+Processing by OrdersController#slow as HTML
+  [1m[36mOrder Load (1353.2ms)[0m  [1m[35mWITH RECURSIVE r(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM r WHERE n < 3000000) SELECT count(*) AS n FROM r[0m
+  ↳ app.rb:83:in `slow'
+  Rendering text template
+  Rendered text template (Duration: 0.0ms | Allocations: 1)
+Completed 200 OK in 2456ms (Views: 0.5ms | ActiveRecord: 1353.2ms | Allocations: 388)
+
+
+Started GET "/boom" for 127.0.0.1 at 2026-10-15 08:38:11 +0000
+Processing by OrdersController#boom as HTML
+  [1m[36mOrder Load (0.1ms)[0m  [1m[34mSELECT "orders".* FROM "orders" WHERE "orders"."id" = ? LIMIT ?[0m  [["id", 1], ["LIMIT", 1]]
+  ↳ app.rb:89:in `boom'
+Completed 500 Internal Server Error in 1ms (ActiveRecord: 0.1ms | Allocations: 635)
+
+
+  
+NoMethodError (undefined method `missing_method_here' for an instance of Order):
+  
+app.rb:89:in `boom'
+app.rb:116:in `<main>'
+Started GET "/template" for 127.0.0.1 at 2026-10-15 08:38:11 +0000
+Processing by OrdersController#template as HTML
+  Rendering inline template
+  Rendered inline template (Duration: 3.3ms | Allocations: 218)
+Completed 500 Internal Server Error in 4ms (ActiveRecord: 0.0ms | Allocations: 433)
+
+
+  
+ActionView::Template::Error (undefined method `name' for nil):
+    1: <%= @nothing.name %>
+  
+app.rb:93:in `template'
+app.rb:117:in `<main>'
+Started GET "/strict" for 127.0.0.1 at 2026-10-15 08:38:12 +0000
+Processing by OrdersController#strict as HTML
+  [1m[36mOrder Load (0.1ms)[0m  [1m[34mSELECT "orders".* FROM "orders" ORDER BY "orders"."id" ASC LIMIT ?[0m  [["LIMIT", 1]]
+  ↳ app.rb:97:in `strict'
+[31m`Order` is marked for strict_loading. The Customer association named `:customer` cannot be lazily loaded.[0m
+  ↳ app.rb:98:in `strict'
+  [1m[36mCustomer Load (0.0ms)[0m  [1m[34mSELECT "customers".* FROM "customers" WHERE "customers"."id" = ? LIMIT ?[0m  [["id", 1], ["LIMIT", 1]]
+  ↳ app.rb:98:in `strict'
+  Rendering text template
+  Rendered text template (Duration: 0.0ms | Allocations: 1)
+Completed 200 OK in 2ms (Views: 0.2ms | ActiveRecord: 0.1ms | Allocations: 1406)
+
+
+Started GET "/old" for 127.0.0.1 at 2026-10-15 08:38:12 +0000
+Processing by OrdersController#old as HTML
+DEPRECATION WARNING: old_thing is deprecated, use new_thing (called from <main> at app.rb:119)
+  Rendering text template
+  Rendered text template (Duration: 0.0ms | Allocations: 1)
+Completed 200 OK in 0ms (Views: 0.1ms | ActiveRecord: 0.0ms | Allocations: 194)
+
+
+Started POST "/orders" for 127.0.0.1 at 2026-10-15 08:38:12 +0000
+Processing by OrdersController#create as HTML
+  Parameters: {"order"=>{"total"=>"1", "admin"=>"true"}}
+[31mUnpermitted parameter: :admin. Context: { controller: OrdersController, action: create, request: #<ActionDispatch::Request:0x00007d65b031a0b8>, params: {"order"=>{"total"=>"1", "admin"=>"true"}, "controller"=>"orders", "action"=>"create"} }[0m
+  Rendering text template
+  Rendered text template (Duration: 0.0ms | Allocations: 1)
+Completed 200 OK in 0ms (Views: 0.2ms | ActiveRecord: 0.0ms | Allocations: 260)
+
+
+Started GET "/missing" for 127.0.0.1 at 2026-10-15 08:38:12 +0000
+  
+ActionController::RoutingError (No route matches [GET] "/missing"):
+  
+app.rb:121:in `<main>'

@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "mani4.rails-inspector",
+  "name": "Rails Inspector",
+  "version": "1.0.0",
+  "author": "MaNi4",
+  "homepage": "https://github.com/MaNi4/omarchy-rails-inspector",
+  "license": "MIT",
+  "description": "Only the problems from your Rails development logs and browser: exceptions, N+1 and strict loading, slow requests and queries, deprecations, warnings and JavaScript errors, per project",
+  "kinds": [
+    "bar-widget",
+    "service"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml",
+    "service": "Service.qml"
+  },
+  "barWidget": {
+    "displayName": "Rails Inspector",
+    "description": "Problems from development.log and the browser: errors, N+1, slow requests and queries",
+    "category": "Development",
+    "aliases": [
+      "rails",
+      "n+1",
+      "log",
+      "errors",
+      "slow queries",
+      "javascript"
+    ],
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
