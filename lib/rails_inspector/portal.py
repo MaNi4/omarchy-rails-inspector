@@ -1,3 +1,4 @@
+import html
 import os
 import threading
 import time
@@ -49,3 +50,14 @@ def choose(start, title, wait=600):
         return None
     path = urllib.parse.unquote(urllib.parse.urlparse(picked[0]).path)
     return path if os.path.isdir(path) else None
+
+
+def notify(summary, body):
+    # Over D-Bus rather than notify-send, so the text never shows up in process listings.
+    # Only the body is markup; the summary is always plain text.
+    from gi.repository import Gio, GLib
+    params = GLib.Variant("(susssasa{sv}i)", ("Rails Inspector", 0, "", summary, html.escape(body, False), [],
+                                              {"urgency": GLib.Variant("y", 1)}, -1))
+    session_bus().call("org.freedesktop.Notifications", "/org/freedesktop/Notifications",
+                       "org.freedesktop.Notifications", "Notify", params, None,
+                       Gio.DBusCallFlags.NONE, 2000, None, None, None)

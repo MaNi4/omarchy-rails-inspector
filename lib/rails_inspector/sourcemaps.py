@@ -27,7 +27,8 @@ class SourceMaps:
 
     def map_file(self, project_path, url_path):
         m = re.match(r"^/assets/(.+?)(?:\.debug)?(?:-[0-9a-f]{7,})?\.js$", url_path)
-        if not m:
+        # The path comes from a report, so only a map inside the build folders is read.
+        if not m or ".." in m.group(1).split("/"):
             return None
         for folder in ("app/assets/builds", "public/assets"):
             candidate = os.path.join(project_path, folder, m.group(1) + ".js.map")

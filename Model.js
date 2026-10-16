@@ -224,6 +224,36 @@ function parseLine(line) {
   return null
 }
 
+// The text a one-line field keeps: no line breaks or other control
+// characters, only digits in a number, at most `max` characters.
+function fieldText(text, max, digitsOnly) {
+  var line = String(text || "").replace(/[\u0000-\u001f\u007f]/g, "")
+  if (digitsOnly) line = line.replace(/\D/g, "")
+  return Array.from(line).slice(0, max).join("")
+}
+
+// Whether a number setting's text is a whole number from `from` to `to`.
+function inRange(text, from, to) {
+  if (!/^\d+$/.test(String(text))) return false
+  var n = Number(text)
+  return n >= from && n <= to
+}
+
+// Pasting into a field: the clipboard is read here, never by the field, and
+// no more of it than a field could take.
+var PASTE_BYTES = 1024
+
+function pasting() {
+  return ["sh", "-c", "timeout 2 wl-paste --no-newline 2>/dev/null | head -c " + PASTE_BYTES]
+}
+
+// What of the clipboard goes into a field with `room` characters left: its
+// first line, without a character cut in half at the end of the read.
+function pastedLine(raw, room) {
+  var line = String(raw || "").replace(/\ufffd+$/, "").split(/\r\n|\r|\n/)[0]
+  return fieldText(line, Math.max(0, room), false)
+}
+
 // One stdin line for the feed: words joined by spaces, with no line break inside any of them.
 function command(words) {
   return words.map(function(w) { return String(w).replace(/[\r\n]/g, " ") }).join(" ") + "\n"

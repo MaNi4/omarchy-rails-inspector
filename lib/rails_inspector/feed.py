@@ -22,7 +22,6 @@ import json
 import os
 import queue
 import re
-import shutil
 import subprocess
 import sys
 import threading
@@ -32,7 +31,7 @@ from . import config as conf
 from .browser import make_server, record_report
 from .files import editor_command, local_file
 from .logparser import LogParser
-from .portal import choose
+from .portal import choose, notify
 from .guide import check
 from .sourcemaps import SourceMaps
 from .store import ProblemStore
@@ -231,15 +230,16 @@ class Inspector:
 
     # ---------- Out ----------
     def notify(self, project_name, title, body):
-        if not self.cfg["notify"] or not shutil.which("notify-send"):
+        if not self.cfg["notify"]:
             return
         now = time.time()
         if now - self.last_note < NOTIFY_EVERY:
             return
         self.last_note = now
-        subprocess.Popen(["notify-send", "-a", "Rails Inspector", "-u", "normal", "--",
-                          (project_name + " · " + title)[:160], body[:200]],
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            notify((project_name + " · " + title)[:160], body[:200])
+        except Exception:
+            pass
 
     def say(self, text, ok=True):
         self.message = {"text": text, "ok": ok, "ts": time.time()}

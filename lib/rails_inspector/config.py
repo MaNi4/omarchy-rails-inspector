@@ -25,16 +25,33 @@ ORIGIN = re.compile(r"^https?://[A-Za-z0-9.-]+(?::\d{1,5})?$")
 def load_json(path, default):
     try:
         with open(path) as f:
+            if os.fstat(f.fileno()).st_mode & 0o077:
+                os.fchmod(f.fileno(), 0o600)
             data = json.load(f)
         return data if isinstance(data, type(default)) else default
     except (OSError, ValueError):
         return default
 
 
+def private_dir(path):
+    # The state holds request parameters, SQL values and exception details.
+    os.makedirs(path, mode=0o700, exist_ok=True)
+    if os.stat(path).st_mode & 0o077:
+        os.chmod(path, 0o700)
+
+
 def save_json(path, data):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    folder = os.path.dirname(path)
+    if folder == STATE_DIR:
+        private_dir(folder)
+    else:
+        os.makedirs(folder, exist_ok=True)
     tmp = path + ".tmp"
-    with open(tmp, "w") as f:
+    try:
+        os.unlink(tmp)
+    except FileNotFoundError:
+        pass
+    with os.fdopen(os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w") as f:
         json.dump(data, f, indent=2)
     os.replace(tmp, path)
 

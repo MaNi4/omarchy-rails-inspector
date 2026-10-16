@@ -29,6 +29,11 @@ class SourceMapsTest(unittest.TestCase):
         self.assertIsNotNone(self.maps.resolve(self.root, "http://x/assets/application-0123abcd.js", 2, 1))
         self.assertIsNotNone(self.maps.resolve(self.root, "/assets/application.js?v=1", 2, 1))
 
+    def test_a_map_outside_the_build_folders_is_not_read(self):
+        helper.write(self.root, "secret.js.map", json.dumps({"version": 3, "sources": ["x.js"], "mappings": ";AAAA"}))
+        self.assertIsNone(self.maps.map_file(self.root, "/assets/../../secret.js"))
+        self.assertIsNone(self.maps.resolve(self.root, "http://x/assets/../../secret.js", 2, 1))
+
     def test_locate_prefers_own_code(self):
         write_map(self.root, ";" + helper.vlq(0, 0, 0, 0) + ";" + helper.vlq(0, 1, 4, 0),
                   sources=("../../../node_modules/lib/index.js", "../../javascript/own.js"))

@@ -128,6 +128,37 @@ Panel {
     onStarted: { write(text); stdinEnabled = false }
   }
 
+  // ---------- Pasting ----------
+  // Fields never read the clipboard themselves (see LineField); a paste asks
+  // wl-paste for at most Model.PASTE_BYTES, and gives up after two seconds.
+  property var pasteTarget: null
+  property int pasteRoom: 0
+
+  function paste(target, room) {
+    if (paster.running) return
+    pasteTarget = target
+    pasteRoom = room
+    paster.running = true
+  }
+
+  function finishPaste(raw) {
+    var target = pasteTarget
+    pasteTarget = null
+    if (!target || !opened || !target.activeFocus) return
+    target.remove(target.selectionStart, target.selectionEnd)
+    var text = Model.pastedLine(raw, pasteRoom - Array.from(target.text).length)
+    if (text !== "") target.insert(target.cursorPosition, text)
+  }
+
+  Process {
+    id: paster
+    command: Model.pasting()
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.finishPaste(text)
+    }
+  }
+
   function openRow(p) {
     if (!p || p.openable !== true || !service) return
     service.open(projectName, p.fp)
@@ -143,7 +174,7 @@ Panel {
   readonly property var settings: status.settings || ({})
   readonly property string originsText: Model.originsText(settings)
   readonly property var ignoredRows: Model.ignoredRows(projects)
-  onOriginsTextChanged: if (!originsField.activeFocus) originsField.text = originsText
+  onOriginsTextChanged: if (!originsField.input.activeFocus) originsField.text = originsText
 
   function configure() {
     configuring = !configuring
@@ -333,6 +364,159 @@ Panel {
         hoverColor: root.urgent
         fontFamily: root.ff
         onClicked: root.ignoreRow(row.entry)
+      }
+    }
+  }
+
+  // A one-line field. It is a TextEdit held to one line and not a TextField:
+  // a TextField, like the TextInput in a SpinBox, asks the clipboard for its
+  // whole text whenever the clipboard changes, to know whether Paste could be
+  // offered. Pasting goes through root.paste() instead: Ctrl+V and
+  // Shift+Insert are taken before the field sees them, and the middle and
+  // right buttons are swallowed.
+  component LineField: BorderSurface {
+    id: line
+    property alias text: input.text
+    property alias input: input
+    property string placeholderText: ""
+    property int maximumLength: 300
+    property bool digitsOnly: false
+    signal edited()
+    signal finished()
+    signal escaped()
+
+    readonly property var spec: Border.controlSpec(input.activeFocus ? "focus" : (lineHover.hovered ? "hover-cursor" : "normal"),
+      root.barForeground, root.accent)
+    implicitWidth: Style.spacing.numberFieldWidth
+    implicitHeight: Math.max(Style.spacing.controlHeight, input.implicitHeight + (Style.spacing.controlPaddingY + Border.top(spec)) * 2)
+    color: Style.controlFill(input.activeFocus, lineHover.hovered, root.barForeground, root.accent)
+    borderSpec: spec
+    radius: Style.cornerRadius
+
+    HoverHandler {
+      id: lineHover
+      cursorShape: Qt.IBeamCursor
+    }
+
+    TextEdit {
+      id: input
+      anchors.left: parent.left
+      anchors.right: parent.right
+      anchors.verticalCenter: parent.verticalCenter
+      anchors.leftMargin: Style.spacing.controlPaddingX + Border.left(line.spec)
+      anchors.rightMargin: Style.spacing.controlPaddingX + Border.right(line.spec)
+      textFormat: TextEdit.PlainText
+      wrapMode: TextEdit.NoWrap
+      clip: true
+      selectByMouse: true
+      color: root.barForeground
+      selectionColor: Style.selectionFillFor(root.barForeground, root.accent)
+      selectedTextColor: root.barForeground
+      font.family: root.ff
+      font.pixelSize: Style.font.bodySmall
+
+      onTextChanged: {
+        var kept = Model.fieldText(text, line.maximumLength, line.digitsOnly)
+        if (kept === text) {
+          line.edited()
+          return
+        }
+        var at = cursorPosition
+        text = kept
+        cursorPosition = Math.min(at, kept.length)
+      }
+      onActiveFocusChanged: if (!activeFocus) line.finished()
+
+      Keys.onPressed: function(event) {
+        if (event.matches(StandardKey.Paste)) {
+          event.accepted = true
+          root.paste(input, line.maximumLength)
+        } else if (event.key === Qt.Key_Escape) {
+          event.accepted = true
+          line.escaped()
+          keyCatcher.forceActiveFocus()
+        } else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter
+                   || event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab) {
+          event.accepted = true
+          keyCatcher.forceActiveFocus()
+        }
+      }
+
+      MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.MiddleButton | Qt.RightButton
+        onPressed: function(mouse) { mouse.accepted = true }
+        onReleased: function(mouse) { mouse.accepted = true }
+      }
+    }
+
+    Text {
+      visible: input.length === 0
+      anchors.left: input.left
+      anchors.right: input.right
+      anchors.verticalCenter: parent.verticalCenter
+      textFormat: Text.PlainText
+      elide: Text.ElideRight
+      text: line.placeholderText
+      color: root.dimForeground
+      font.family: root.ff
+      font.pixelSize: Style.font.bodySmall
+    }
+  }
+
+  // A number setting: its label over a LineField that takes digits only. A
+  // number in range goes to the feed a moment after typing stops, since a
+  // click elsewhere in the panel does not take the focus from the field;
+  // whatever was typed goes when the field is left, and the feed says when it
+  // is out of range.
+  component NumberSetting: Column {
+    id: number
+    property string label: ""
+    property int value: 0
+    property int from: 0
+    property int to: 0
+    property string sent: ""
+    signal modified(string text)
+    spacing: Style.spacing.md
+
+    function send(typed) {
+      if (typed === "" || typed === String(value) || typed === sent) return
+      sent = typed
+      modified(typed)
+    }
+
+    Timer {
+      id: settle
+      interval: 1000
+      onTriggered: if (Model.inRange(numberLine.text, number.from, number.to)) number.send(numberLine.text)
+    }
+
+    onValueChanged: if (!numberLine.input.activeFocus) numberLine.text = String(value)
+    Component.onCompleted: numberLine.text = String(value)
+
+    Text {
+      textFormat: Text.PlainText
+      text: number.label
+      color: root.dimForeground
+      font.family: root.ff
+      font.pixelSize: Style.font.bodySmall
+    }
+
+    LineField {
+      id: numberLine
+      digitsOnly: true
+      maximumLength: 6
+      onEdited: if (input.activeFocus) settle.restart()
+      onEscaped: {
+        settle.stop()
+        text = String(number.value)
+      }
+      onFinished: {
+        settle.stop()
+        var typed = text
+        text = String(number.value)
+        number.send(typed)
+        number.sent = ""
       }
     }
   }
@@ -531,13 +715,12 @@ Panel {
           width: parent.width
           spacing: Style.space(10)
 
-          SearchableDropdown {
+          // Dropdown, not SearchableDropdown: its search is a TextField (see LineField).
+          Dropdown {
             id: projectPicker
             width: Math.min(Style.space(280), parent.width / 2)
             anchors.verticalCenter: parent.verticalCenter
             showLabel: false
-            placeholderText: "Search projects…"
-            emptyText: "No such project"
             fontFamily: root.ff
             foreground: root.barForeground
             value: root.projectName
@@ -751,18 +934,13 @@ Panel {
 
             Repeater {
               model: Model.THRESHOLD_SETTINGS
-              NumberField {
+              NumberSetting {
                 required property var modelData
                 label: modelData.label
                 from: modelData.from
                 to: modelData.to
                 value: Number(root.settings[modelData.key] || modelData.from)
-                foreground: root.barForeground
-                fontFamily: root.ff
-                fontSize: Style.font.bodySmall
-                field.textFromValue: function(v) { return String(v) }
-                field.valueFromText: function(t) { return parseInt(t, 10) || from }
-                onModified: function(v) { root.setSetting(modelData.key, v) }
+                onModified: function(text) { root.setSetting(modelData.key, text) }
               }
             }
           }
@@ -777,18 +955,13 @@ Panel {
             width: parent.width
             spacing: Style.space(14)
 
-            NumberField {
+            NumberSetting {
               id: portField
               label: Model.PORT_SETTING.label
               from: Model.PORT_SETTING.from
               to: Model.PORT_SETTING.to
               value: Number(root.settings.jsPort || 9787)
-              foreground: root.barForeground
-              fontFamily: root.ff
-              fontSize: Style.font.bodySmall
-              field.textFromValue: function(v) { return String(v) }
-              field.valueFromText: function(t) { return parseInt(t, 10) || from }
-              onModified: function(v) { root.setSetting("jsPort", v) }
+              onModified: function(text) { root.setSetting("jsPort", text) }
             }
 
             Column {
@@ -803,15 +976,13 @@ Panel {
                 font.pixelSize: Style.font.bodySmall
               }
 
-              TextField {
+              LineField {
                 id: originsField
                 width: parent.width
                 placeholderText: "http://shop.test:3000"
-                foreground: root.barForeground
-                font.family: root.ff
-                font.pixelSize: Style.font.bodySmall
-                onEditingFinished: root.saveOrigins()
-                Keys.onEscapePressed: { text = root.originsText; keyCatcher.forceActiveFocus() }
+                maximumLength: 1000
+                onFinished: root.saveOrigins()
+                onEscaped: text = root.originsText
               }
             }
           }

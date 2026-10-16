@@ -10,7 +10,7 @@ const source = fs.readFileSync(path.join(root, "Model.js"), "utf8").replace(/^\.
 const Model = new Function(source + `\nreturn { KINDS, ALARMING, KEPT_DETAILS, THRESHOLD_SETTINGS, PORT_SETTING, originsText, ignoredText, ignoredRows, freshIn, countIn, freshAlarms, freshAll,
   alarmTotal, chooseProject, projectOptions, rowsOf, firstFreshTab, nextTab, moveCursor, timeAgo, isFresh, isAlarm,
   subtitle, history, tabLabel, tooltip, settingsLine, emptyText, guideSteps, setupHeading, SETUP_HINT, copyText, detailKey, keepDetail, parseLine,
-  command }`)()
+  command, fieldText, pasting, pastedLine, PASTE_BYTES, inRange }`)()
 
 const REPORT = "http://127.0.0.1:9787/report"
 const REPORTER = "http://127.0.0.1:9787/rails-inspector.js?project=shop"
@@ -275,6 +275,30 @@ const model = {
   "a command is one line, whatever its words hold"() {
     assert.strictEqual(Model.command(["resolve", "shop", "abc"]), "resolve shop abc\n")
     assert.strictEqual(Model.command(["project", "remove", "evil\nconfig"]), "project remove evil config\n")
+  },
+  "a field keeps one line, digits in a number, and no more than it takes"() {
+    assert.strictEqual(Model.fieldText("http://a.test\n:3000\t", 100, false), "http://a.test:3000")
+    assert.strictEqual(Model.fieldText("12a3\n4", 6, true), "1234")
+    assert.strictEqual(Model.fieldText("1234567", 6, true), "123456")
+    assert.strictEqual(Model.fieldText("😀😀😀", 2, false), "😀😀")
+  },
+  "a number is saved while typing only when it is in range"() {
+    assert.ok(Model.inRange("1200", 1, 600000))
+    assert.ok(Model.inRange("9787", 1024, 65535))
+    assert.ok(!Model.inRange("97", 1024, 65535))
+    assert.ok(!Model.inRange("", 1, 10))
+    assert.ok(!Model.inRange("1", 2, 1000))
+    assert.ok(!Model.inRange("12a", 1, 1000))
+  },
+  "a paste reads a bounded clipboard and puts in its first line, as much as fits"() {
+    const cmd = Model.pasting()
+    assert.deepStrictEqual(cmd.slice(0, 2), ["sh", "-c"])
+    assert.match(cmd[2], new RegExp("^timeout 2 wl-paste --no-newline 2>/dev/null \\| head -c " + Model.PASTE_BYTES + "$"))
+    assert.strictEqual(Model.pastedLine("http://a.test:3000\nsecond line", 100), "http://a.test:3000")
+    assert.strictEqual(Model.pastedLine("abcdef", 3), "abc")
+    assert.strictEqual(Model.pastedLine("abc", 0), "")
+    assert.strictEqual(Model.pastedLine("abc", -5), "")
+    assert.strictEqual(Model.pastedLine("ab\ufffd", 10), "ab")
   },
 }
 

@@ -27,8 +27,8 @@ Requirements:
 
 - Rails 7.0 or newer with the standard development log. Tested on Rails 7.0,
   7.1, 7.2, 8.0 and 8.1.
-- Python 3.10 or newer, `python-gobject`, `notify-send` and `wl-copy`. All of
-  them come with Omarchy.
+- Python 3.10 or newer, `python-gobject` and `wl-copy`. All of them come
+  with Omarchy.
 
 ## What it shows
 

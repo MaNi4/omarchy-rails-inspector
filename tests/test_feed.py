@@ -235,18 +235,34 @@ class FeedBehaviourTest(FeedCase):
         self.assertIsNone(self.inspector.js_failed_at)
 
     def test_notifications_can_be_turned_off_and_do_not_pile_up(self):
-        with mock.patch.object(feed.shutil, "which", return_value="/usr/bin/notify-send"), \
-                mock.patch.object(feed.subprocess, "Popen") as popen:
+        with mock.patch.object(feed, "notify") as note, mock.patch.object(feed.subprocess, "Popen") as popen:
             self.inspector.notify("shop", "first", "")
-            popen.assert_not_called()
+            note.assert_not_called()
             self.inspector.cfg["notify"] = True
             self.inspector.notify("shop", "first", "body")
             self.inspector.notify("shop", "second", "body")
-            self.assertEqual(popen.call_count, 1)
-            self.assertEqual(popen.call_args[0][0][-2:], ["shop · first", "body"])
+            self.assertEqual(note.call_count, 1)
+            self.assertEqual(note.call_args[0], ("shop · first", "body"))
             self.inspector.last_note -= feed.NOTIFY_EVERY
             self.inspector.notify("shop", "third", "body")
-            self.assertEqual(popen.call_count, 2)
+            self.assertEqual(note.call_count, 2)
+            popen.assert_not_called()
+
+    def test_state_is_private(self):
+        os.makedirs(conf.STATE_DIR, mode=0o755, exist_ok=True)
+        os.chmod(conf.STATE_DIR, 0o755)
+        old = os.path.join(conf.STATE_DIR, "old.json")
+        with open(old, "w") as f:
+            f.write("{}")
+        os.chmod(old, 0o644)
+        self.assertEqual(conf.load_json(old, {}), {})
+        self.assertEqual(os.stat(old).st_mode & 0o777, 0o600)
+        path = os.path.join(conf.STATE_DIR, "shop.json")
+        conf.save_json(path, {"problems": []})
+        self.assertEqual(os.stat(path).st_mode & 0o777, 0o600)
+        self.assertEqual(os.stat(conf.STATE_DIR).st_mode & 0o777, 0o700)
+        conf.save_json(conf.CONFIG, {"projects": []})
+        self.assertEqual(os.stat(conf.CONFIG).st_mode & 0o777, 0o600)
 
     def test_adding_a_project_checks_it_is_rails_and_not_listed_yet(self):
         plain = tempfile.mkdtemp(prefix="not-rails-")
